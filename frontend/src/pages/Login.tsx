@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { LogIn, AlertCircle } from 'lucide-react'
 import Logo from '../components/Logo'
 import { useAuth, homePathFor } from '../context/AuthContext'
-import { ApiError } from '../lib/api'
+import { ApiError, api } from '../lib/api'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -19,6 +19,29 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [serverError, setServerError] = useState('')
+  const [demoAvailable, setDemoAvailable] = useState(false)
+  const [demoBusy, setDemoBusy] = useState('')
+
+  // One-click demo logins are offered only when this deployment actually
+  // seeded demo accounts (backend reports it via /health), never in prod.
+  useEffect(() => {
+    api.get<{ demo_accounts?: boolean }>('/health')
+      .then(h => setDemoAvailable(!!h.demo_accounts))
+      .catch(() => setDemoAvailable(false))
+  }, [])
+
+  const demoLogin = async (email: string, password: string) => {
+    setServerError('')
+    setDemoBusy(email)
+    try {
+      const user = await login(email, password)
+      navigate(homePathFor(user), { replace: true })
+    } catch (e) {
+      setServerError(e instanceof ApiError ? e.message : 'Demo sign-in failed. Please try again.')
+    } finally {
+      setDemoBusy('')
+    }
+  }
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
   })
@@ -83,9 +106,27 @@ export default function Login() {
           </p>
           <div className="mt-6 rounded-lg bg-ice p-3.5 text-xs leading-relaxed text-muted">
             <p className="font-semibold text-ink">Development demo accounts</p>
-            <p className="mt-1">citizen@demo.smartpetition.dev / Citizen#123</p>
-            <p>officer@demo.smartpetition.dev / Officer#123</p>
-            <p>Admin credentials are generated at first startup (see backend console / FIRST_ADMIN.txt).</p>
+            {demoAvailable ? (
+              <>
+                <div className="mt-2 flex flex-col gap-2">
+                  <button type="button" onClick={() => demoLogin('citizen@demo.smartpetition.dev', 'Citizen#123')}
+                          disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
+                    {demoBusy === 'citizen@demo.smartpetition.dev' ? 'Signing in…' : 'One-click sign in as Demo Citizen'}
+                  </button>
+                  <button type="button" onClick={() => demoLogin('officer@demo.smartpetition.dev', 'Officer#123')}
+                          disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
+                    {demoBusy === 'officer@demo.smartpetition.dev' ? 'Signing in…' : 'One-click sign in as Demo Officer'}
+                  </button>
+                </div>
+                <p className="mt-2">Admin credentials are generated at first startup (see backend console / FIRST_ADMIN.txt).</p>
+              </>
+            ) : (
+              <>
+                <p className="mt-1">citizen@demo.smartpetition.dev / Citizen#123</p>
+                <p>officer@demo.smartpetition.dev / Officer#123</p>
+                <p>Admin credentials are generated at first startup (see backend console / FIRST_ADMIN.txt).</p>
+              </>
+            )}
           </div>
         </div>
       </div>

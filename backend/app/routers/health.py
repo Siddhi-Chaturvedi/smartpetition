@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter
 from sqlalchemy import text
 
+from ..config import settings
 from ..deps import DbDep
 from ..schemas import HealthResponse
 from ..services.ai_classifier import classifier
@@ -26,6 +27,7 @@ def health(db: DbDep):
         database=db_status,
         ai_model=f"{classifier.version} ({'trained' if classifier.available else 'fallback-rules'})",
         time=datetime.now(timezone.utc),
+        demo_accounts=settings.seed_demo_data,
     )
 
 

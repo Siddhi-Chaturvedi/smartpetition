@@ -62,3 +62,30 @@ describe('session expiry handling', () => {
     })
   })
 })
+
+describe('token storage resilience', () => {
+  it('keeps the session alive when localStorage is blocked (sandboxed iframe)', async () => {
+    // Simulate a sandboxed embed: every localStorage touch throws.
+    const broken = {
+      getItem: () => { throw new DOMException('blocked', 'SecurityError') },
+      setItem: () => { throw new DOMException('blocked', 'SecurityError') },
+      removeItem: () => { throw new DOMException('blocked', 'SecurityError') },
+    }
+    vi.stubGlobal('localStorage', broken)
+
+    setToken('in-memory-token')
+    expect(getToken()).toBe('in-memory-token')
+
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      const auth = new Headers(init?.headers).get('Authorization')
+      if (auth === 'Bearer in-memory-token') {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ detail: 'Not authenticated' }), { status: 401 })
+    }))
+    await expect(api.get('/auth/me')).resolves.toMatchObject({ ok: true })
+
+    vi.unstubAllGlobals()
+    setToken(null)
+  })
+})

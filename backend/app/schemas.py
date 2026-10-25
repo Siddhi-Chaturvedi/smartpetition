@@ -362,6 +362,7 @@ class HealthResponse(BaseModel):
     database: str
     ai_model: str
     time: datetime
+    demo_accounts: bool = False
 
 
 TokenResponse.model_rebuild()

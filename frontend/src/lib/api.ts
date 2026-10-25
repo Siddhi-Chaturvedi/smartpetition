@@ -5,6 +5,17 @@
 const BASE = '/api/v1'
 const TOKEN_KEY = 'smartpetition_token'
 
+// In-memory token mirror: the primary store. localStorage is only a
+// best-effort persistence layer because some embed contexts (sandboxed
+// iframes, locked-down browsers) block or partition it — without this,
+// login succeeds but every next request goes out unauthenticated.
+let memoryToken: string | null = null
+try {
+  memoryToken = localStorage.getItem(TOKEN_KEY)
+} catch {
+  memoryToken = null
+}
+
 export class ApiError extends Error {
   status: number
   errors?: { field: string; message: string }[]
@@ -16,11 +27,22 @@ export class ApiError extends Error {
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  if (memoryToken) return memoryToken
+  try {
+    return localStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null // storage blocked (e.g. sandboxed iframe) — memory-only session
+  }
 }
 export function setToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token)
-  else localStorage.removeItem(TOKEN_KEY)
+  memoryToken = token
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token)
+    else localStorage.removeItem(TOKEN_KEY)
+  } catch {
+    // localStorage unavailable (sandboxed iframe / private mode): keep the
+    // session in memory so login still works for this page load.
+  }
 }
 
 async function request<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
