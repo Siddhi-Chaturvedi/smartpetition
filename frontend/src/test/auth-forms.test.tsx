@@ -53,10 +53,20 @@ describe('registration form validation (client-side, zod)', () => {
     expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument()
   })
 
-  it('shows the demo account hint box', () => {
+  it('shows the quick demo sign-in panel when the backend seeds demo accounts', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).endsWith('/api/v1/health')) {
+        return new Response(JSON.stringify({
+          status: 'ok', version: '1.0.0', database: 'ok', ai_model: 'x',
+          time: '2026-01-01T00:00:00Z', demo_accounts: true,
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      return new Response('', { status: 401 })
+    }))
     renderPage(<Login />)
-    expect(screen.getByText(/development demo accounts/i)).toBeInTheDocument()
-    expect(screen.getByText(/citizen@demo\.smartpetition\.dev/i)).toBeInTheDocument()
+    expect(await screen.findByTestId('demo-quick-login')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in as demo citizen/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in as demo officer/i })).toBeInTheDocument()
   })
 })
 
