@@ -36,6 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refresh()
+    const onUnauthorized = () => setUser(null)
+    window.addEventListener('smartpetition:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('smartpetition:unauthorized', onUnauthorized)
   }, [refresh])
 
   const login = useCallback(async (email: string, password: string) => {

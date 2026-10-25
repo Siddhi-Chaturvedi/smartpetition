@@ -45,6 +45,12 @@ export default function Login() {
           <h1 className="text-xl font-bold text-ink">Welcome back</h1>
           <p className="mt-1 text-sm text-muted">Log in to submit, track and manage grievances.</p>
 
+          {new URLSearchParams(location.search).get('session') === 'expired' && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800" role="status">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              Your previous session ended (server restart or expired token). Please sign in again.
+            </div>
+          )}
           {serverError && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-danger" role="alert">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />

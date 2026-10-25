@@ -53,7 +53,16 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
     let message = `Request failed (${res.status})`
     if (d && typeof d.detail === 'string') message = d.detail
     else if (res.status === 422 && d?.errors?.length) message = d.errors.map(e => `${e.field}: ${e.message}`).join('; ')
-    if (res.status === 401) setToken(null)
+    if (res.status === 401) {
+      setToken(null)
+      // Wrong password on the login/register form is a normal 401 — stay put.
+      // Any other 401 means the session died (server restart, DB reseed,
+      // token expiry): tell the app to sign out and bounce to /login instead
+      // of leaving the user stranded on an error screen.
+      if (!path.startsWith('/auth/login') && !path.startsWith('/auth/register')) {
+        window.dispatchEvent(new CustomEvent('smartpetition:unauthorized'))
+      }
+    }
     throw new ApiError(res.status, message, d?.errors)
   }
   return data as T
