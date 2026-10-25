@@ -36,25 +36,63 @@ export default function Login() {
   const [demoAvailable, setDemoAvailable] = useState(false)
   const [demoBusy, setDemoBusy] = useState('')
   const [health, setHealth] = useState<HealthInfo | null>(null)
+  const [serverUp, setServerUp] = useState<boolean | null>(null)
+  const [serverWaking, setServerWaking] = useState(false)
 
   // One-click demo logins + live status chips are offered only when this
   // deployment actually seeds demo accounts (backend /health), never in prod.
+  // The poll also makes the page self-healing: if the server is momentarily
+  // down (sandbox recycle), the page keeps retrying and enables itself the
+  // moment the server is back — no manual reload needed.
   useEffect(() => {
-    api.get<HealthInfo>('/health')
-      .then(h => { setHealth(h); setDemoAvailable(!!h.demo_accounts) })
-      .catch(() => setDemoAvailable(false))
+    let alive = true
+    let timer: ReturnType<typeof setTimeout>
+    const poll = async () => {
+      try {
+        const h = await api.get<HealthInfo>('/health')
+        if (!alive) return
+        setHealth(h)
+        setDemoAvailable(!!h.demo_accounts)
+        setServerUp(true)
+        timer = setTimeout(poll, 30000)
+      } catch {
+        if (!alive) return
+        setServerUp(false)
+        timer = setTimeout(poll, 3000)
+      }
+    }
+    void poll()
+    return () => { alive = false; clearTimeout(timer) }
   }, [])
+
+  // Login that survives a server wake-up: network-level failures (status 0)
+  // are retried with backoff instead of dumping an error on the user.
+  const loginWithRetry = async (email: string, password: string) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await login(email, password)
+      } catch (e) {
+        const retryable = e instanceof ApiError && e.status === 0 && attempt < 8
+        if (!retryable) throw e
+        setDemoBusy(email)
+        setServerWaking(true)
+        await new Promise(r => setTimeout(r, 2500))
+      }
+    }
+  }
 
   const demoLogin = async (email: string, password: string) => {
     setServerError('')
     setDemoBusy(email)
+    setServerWaking(false)
     try {
-      const user = await login(email, password)
+      const user = await loginWithRetry(email, password)
       navigate(homePathFor(user), { replace: true })
     } catch (e) {
       setServerError(e instanceof ApiError ? e.message : 'Demo sign-in failed. Please try again.')
     } finally {
       setDemoBusy('')
+      setServerWaking(false)
     }
   }
 
@@ -64,12 +102,15 @@ export default function Login() {
 
   const onSubmit = async (values: FormValues) => {
     setServerError('')
+    setServerWaking(false)
     try {
-      const user = await login(values.email, values.password)
+      const user = await loginWithRetry(values.email, values.password)
       const from = (location.state as { from?: string } | null)?.from
       navigate(from && from !== '/login' ? from : homePathFor(user), { replace: true })
     } catch (e) {
       setServerError(e instanceof ApiError ? e.message : 'Login failed. Please try again.')
+    } finally {
+      setServerWaking(false)
     }
   }
 
@@ -107,8 +148,8 @@ export default function Login() {
 
         <div className="relative flex flex-wrap items-center gap-2 text-xs">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5">
-            <Activity className={`h-3.5 w-3.5 ${health?.status === 'ok' ? 'text-emerald-400' : 'text-amber-400'}`} aria-hidden />
-            API {health ? health.status : '…'}
+            <Activity className={`h-3.5 w-3.5 ${serverUp ? 'text-emerald-400' : 'text-amber-400'}`} aria-hidden />
+            API {serverUp === null ? '…' : serverUp ? health?.status ?? 'ok' : 'starting…'}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5">
             <Database className={`h-3.5 w-3.5 ${health?.database === 'ok' ? 'text-emerald-400' : 'text-amber-400'}`} aria-hidden />
@@ -133,12 +174,6 @@ export default function Login() {
             <h2 className="text-2xl font-bold text-ink">Welcome back</h2>
             <p className="mt-1.5 text-sm text-muted">Log in to submit, track and manage grievances.</p>
 
-            {new URLSearchParams(location.search).get('session') === 'expired' && (
-              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800" role="status">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                Your previous session ended (server restart or expired token). Please sign in again.
-              </div>
-            )}
             {serverError && (
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-danger" role="alert">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -152,15 +187,25 @@ export default function Login() {
                 <div className="mt-2 flex flex-col gap-2">
                   <button type="button" onClick={() => demoLogin('citizen@demo.smartpetition.dev', 'Citizen#123')}
                           disabled={!!demoBusy} className="btn-primary w-full !py-2 text-xs">
-                    {demoBusy === 'citizen@demo.smartpetition.dev' ? 'Signing in…' : 'Sign in as Demo Citizen'}
+                    {demoBusy === 'citizen@demo.smartpetition.dev'
+                      ? (serverWaking ? 'Server waking up — retrying automatically…' : 'Signing in…')
+                      : 'Sign in as Demo Citizen'}
                   </button>
                   <button type="button" onClick={() => demoLogin('officer@demo.smartpetition.dev', 'Officer#123')}
                           disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
-                    {demoBusy === 'officer@demo.smartpetition.dev' ? 'Signing in…' : 'Sign in as Demo Officer'}
+                    {demoBusy === 'officer@demo.smartpetition.dev'
+                      ? (serverWaking ? 'Server waking up — retrying automatically…' : 'Signing in…')
+                      : 'Sign in as Demo Officer'}
                   </button>
                 </div>
                 <p className="mt-2">Admin: generated at first startup (backend console / FIRST_ADMIN.txt).</p>
               </div>
+            )}
+
+            {serverUp === false && (
+              <p className="mt-4 rounded-lg bg-amber-50 px-3.5 py-2 text-xs text-amber-800" role="status">
+                Server is starting up — this page will reconnect automatically, then sign in as usual.
+              </p>
             )}
 
             <div className="mt-5 flex items-center gap-3 text-xs text-muted">

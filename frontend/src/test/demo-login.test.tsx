@@ -82,3 +82,44 @@ describe('one-click demo login', () => {
     expect(screen.queryByRole('button', { name: /sign in as demo (citizen|officer)/i })).toBeNull()
   })
 })
+
+describe('login resilience', () => {
+  it('retries automatically when the server is momentarily unreachable (status 0)', async () => {
+    localStorage.clear()
+    let loginAttempts = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (String(url).endsWith('/api/v1/health')) {
+        return new Response(JSON.stringify({
+          status: 'ok', version: '1.0.0', database: 'ok', ai_model: 'x',
+          time: '2026-01-01T00:00:00Z', demo_accounts: true,
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      if (String(url).endsWith('/api/v1/auth/login')) {
+        loginAttempts += 1
+        if (loginAttempts === 1) throw new TypeError('Failed to fetch') // server down
+        return new Response(JSON.stringify({ access_token: 'tok2', token_type: 'bearer', user }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } })
+      }
+      return new Response('', { status: 404 })
+    }))
+
+    render(
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<Probe />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>,
+    )
+
+    const btn = await screen.findByRole('button', { name: /sign in as demo citizen/i })
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('loc').textContent).toBe('/dashboard')
+    }, { timeout: 15000 })
+    expect(loginAttempts).toBe(2) // failed once, retried, succeeded
+  })
+})
