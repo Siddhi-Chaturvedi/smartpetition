@@ -1,7 +1,10 @@
 """Pydantic request/response schemas. Password hashes and internal fields never leave the API."""
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+import re as _re
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class ORMModel(BaseModel):
@@ -23,9 +26,29 @@ class RegisterRequest(BaseModel):
         return v
 
 
+def _lenient_email_shape(v: str) -> str:
+    v = v.strip().lower()
+    if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+        raise ValueError("Enter a valid email address")
+    return v
+
+
+LenientEmail = Annotated[str, AfterValidator(_lenient_email_shape)]
+
+
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Login uses a shape-checked plain email (not EmailStr) on purpose:
+    # EmailStr rejects special-use domains such as *.local, which are exactly
+    # what the documented local-development demo accounts use. Registration
+    # keeps strict EmailStr validation; login only needs a sane shape and
+    # must never leak which emails exist (401 either way).
+    email: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def _email_shape(cls, v: str) -> str:
+        return _lenient_email_shape(v)
 
 
 class TokenResponse(BaseModel):
@@ -36,7 +59,7 @@ class TokenResponse(BaseModel):
 
 class UserOut(ORMModel):
     id: int
-    email: EmailStr
+    email: LenientEmail  # output must serialise dev demo accounts (*.local) too
     full_name: str
     role: str
     department_id: int | None = None

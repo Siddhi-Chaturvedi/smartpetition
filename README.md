@@ -61,7 +61,10 @@ On first start the seeder creates the admin account:
 
 | Role | Email | Password |
 |---|---|---|
-| Citizen | `citizen@demo.smartpetition.dev` | `Citizen#123` |
+| Citizen (local dev) | `citizen@smartpetition.local` | `CitizenDemo@123` |
+| Officer (local dev) | `officer@smartpetition.local` | `OfficerDemo@123` |
+| Admin (local dev) | `admin@smartpetition.local` | `AdminDemo@123` |
+| Citizen (legacy demo) | `citizen@demo.smartpetition.dev` | `Citizen#123` |
 | Officer (Roads) | `officer@demo.smartpetition.dev` | `Officer#123` |
 | Officer (Water) | `water.officer@demo.smartpetition.dev` | `Officer#123` |
 

@@ -183,22 +183,28 @@ export default function Login() {
 
             {demoAvailable && (
               <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-3.5 text-xs leading-relaxed text-muted" data-testid="demo-quick-login">
-                <p className="font-semibold text-ink">Quick start — one-click demo sign-in</p>
+                <p className="font-semibold text-ink">Quick start — one-click demo sign-in (local development)</p>
                 <div className="mt-2 flex flex-col gap-2">
-                  <button type="button" onClick={() => demoLogin('citizen@demo.smartpetition.dev', 'Citizen#123')}
+                  <button type="button" onClick={() => demoLogin('citizen@smartpetition.local', 'CitizenDemo@123')}
                           disabled={!!demoBusy} className="btn-primary w-full !py-2 text-xs">
-                    {demoBusy === 'citizen@demo.smartpetition.dev'
+                    {demoBusy === 'citizen@smartpetition.local'
                       ? (serverWaking ? 'Server waking up — retrying automatically…' : 'Signing in…')
                       : 'Sign in as Demo Citizen'}
                   </button>
-                  <button type="button" onClick={() => demoLogin('officer@demo.smartpetition.dev', 'Officer#123')}
+                  <button type="button" onClick={() => demoLogin('officer@smartpetition.local', 'OfficerDemo@123')}
                           disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
-                    {demoBusy === 'officer@demo.smartpetition.dev'
+                    {demoBusy === 'officer@smartpetition.local'
                       ? (serverWaking ? 'Server waking up — retrying automatically…' : 'Signing in…')
                       : 'Sign in as Demo Officer'}
                   </button>
+                  <button type="button" onClick={() => demoLogin('admin@smartpetition.local', 'AdminDemo@123')}
+                          disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
+                    {demoBusy === 'admin@smartpetition.local'
+                      ? (serverWaking ? 'Server waking up — retrying automatically…' : 'Signing in…')
+                      : 'Sign in as Demo Admin'}
+                  </button>
                 </div>
-                <p className="mt-2">Admin: generated at first startup (backend console / FIRST_ADMIN.txt).</p>
+                <p className="mt-2">Development demo accounts only — seeded locally, never enabled in production.</p>
               </div>
             )}
 

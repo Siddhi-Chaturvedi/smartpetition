@@ -29,7 +29,7 @@ from .models import (
     Category, Department, Grievance, GrievanceStatus, SLARule, User,
     Role, utcnow,
 )
-from .security import hash_password
+from .security import hash_password, verify_password
 
 random.seed(7)
 
@@ -164,21 +164,41 @@ def seed(db: Session) -> dict:
                 "This file is gitignored. Delete it after first login.\n")
 
     # --- demo accounts (development only) -----------------------------------------
+    # --- demo accounts (development only) -----------------------------------------
+    # Idempotent + self-repairing: existing demo accounts are never duplicated;
+    # if a demo account's role or password hash drifts (e.g. spec change), it is
+    # repaired. Real users (any other email) are never touched.
     demo_specs = [
         ("citizen@demo.smartpetition.dev", "Demo Citizen", "Citizen#123", Role.citizen, None),
         ("officer@demo.smartpetition.dev", "Demo Roads Officer", "Officer#123", Role.officer, "Roads & Infrastructure"),
         ("water.officer@demo.smartpetition.dev", "Demo Water Officer", "Officer#123", Role.officer, "Water Supply & Sewerage"),
+        ("citizen@smartpetition.local", "Demo Citizen (local)", "CitizenDemo@123", Role.citizen, None),
+        ("officer@smartpetition.local", "Demo Roads Officer (local)", "OfficerDemo@123", Role.officer, "Roads & Infrastructure"),
+        ("admin@smartpetition.local", "Demo Administrator (local)", "AdminDemo@123", Role.admin, None),
     ]
     citizen = None
     if settings.environment in ("development", "testing") and settings.seed_demo_data:
         for email, name, pw, role, dept_name in demo_specs:
+            dept_id = dept_by_name[dept_name].id if dept_name else None
             u = db.query(User).filter(User.email == email).first()
             if u is None:
                 u = User(email=email, full_name=name, hashed_password=hash_password(pw),
-                         role=role, email_verified=True,
-                         department_id=dept_by_name[dept_name].id if dept_name else None)
+                         role=role, email_verified=True, department_id=dept_id)
                 db.add(u)
                 report["demo_users"] += 1
+            else:
+                repaired = False
+                if u.role != role:
+                    u.role = role
+                    repaired = True
+                if not verify_password(pw, u.hashed_password):
+                    u.hashed_password = hash_password(pw)
+                    repaired = True
+                if u.department_id != dept_id:
+                    u.department_id = dept_id
+                    repaired = True
+                if repaired:
+                    report["demo_users_repaired"] = report.get("demo_users_repaired", 0) + 1
             if email == "citizen@demo.smartpetition.dev":
                 citizen = u
         db.flush()
