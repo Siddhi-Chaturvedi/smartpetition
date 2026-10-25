@@ -102,3 +102,19 @@ def test_unauthenticated_access_rejected(client):
 def test_invalid_token_rejected(client):
     r = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer garbage.token.here"})
     assert r.status_code == 401
+
+
+def test_alternative_token_carriers(client, citizen):
+    """Session token must also be accepted via X-Auth-Token header and
+    ?access_token= query param (proxy-resilience fallbacks)."""
+    tok = citizen["token"]
+
+    r1 = client.get("/api/v1/auth/me", headers={"X-Auth-Token": tok})
+    assert r1.status_code == 200 and r1.json()["email"] == citizen["email"]
+
+    r2 = client.get("/api/v1/auth/me", params={"access_token": tok})
+    assert r2.status_code == 200 and r2.json()["email"] == citizen["email"]
+
+    # and a bogus token in any carrier is still rejected
+    assert client.get("/api/v1/auth/me", headers={"X-Auth-Token": "junk"}).status_code == 401
+    assert client.get("/api/v1/auth/me", params={"access_token": "junk"}).status_code == 401

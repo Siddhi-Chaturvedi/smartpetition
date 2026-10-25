@@ -68,6 +68,29 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+# TEMPORARY DIAGNOSTIC (dev only): shows whether browser requests actually
+# carry the Authorization header, to trace the preview-proxy auth issue.
+@app.middleware("http")
+async def _debug_auth_headers(request: Request, call_next):
+    if request.url.path.startswith("/api/v1/") and request.method == "GET":
+        auth = request.headers.get("authorization", "")
+        carriers = []
+        if auth.startswith("Bearer "):
+            carriers.append(f"auth:{auth[7:19]}…")
+        if request.headers.get("x-auth-token"):
+            carriers.append(f"xat:{request.headers.get('x-auth-token')[:12]}…")
+        if request.query_params.get("access_token"):
+            carriers.append(f"q:{request.query_params.get('access_token')[:12]}…")
+        dbg = logging.getLogger("smartpetition.debug")
+        dbg.info(
+            "AUTHDEBUG %s %s carriers=%s ua=%s",
+            request.method, request.url.path,
+            carriers or "NONE",
+            request.headers.get("user-agent", "")[:60],
+        )
+    return await call_next(request)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

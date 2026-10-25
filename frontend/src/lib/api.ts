@@ -45,21 +45,35 @@ export function setToken(token: string | null) {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, isForm = false, fallback = false): Promise<T> {
   const headers: Record<string, string> = {}
   const token = getToken()
-  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+    // Redundant carrier: survives proxy layers that strip Authorization.
+    headers['X-Auth-Token'] = token
+  }
   if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
+
+  let url = `${BASE}${path}`
+  if (fallback && token) url += (url.includes('?') ? '&' : '?') + 'access_token=' + encodeURIComponent(token)
 
   let res: Response
   try {
-    res = await fetch(`${BASE}${path}`, {
+    res = await fetch(url, {
       method,
       headers,
       body: isForm ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
     throw new ApiError(0, 'Cannot reach the SmartPetition server. Is the backend running?')
+  }
+
+  // Last-resort retry: some proxies strip auth headers entirely — if a
+  // tokenized request still came back 401, try once with the token in the
+  // query string, which no proxy can remove.
+  if (res.status === 401 && token && !fallback && !path.startsWith('/auth/login') && !path.startsWith('/auth/register')) {
+    return request<T>(method, path, body, isForm, true)
   }
 
   if (res.status === 204) return undefined as T
@@ -99,7 +113,12 @@ export const api = {
   upload: <T>(path: string, form: FormData) => request<T>('POST', path, form, true),
   download: async (path: string) => {
     const token = getToken()
-    const res = await fetch(`${BASE}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+      headers['X-Auth-Token'] = token
+    }
+    const res = await fetch(`${BASE}${path}`, { headers })
     if (!res.ok) throw new ApiError(res.status, 'Download failed')
     return res.blob()
   },
