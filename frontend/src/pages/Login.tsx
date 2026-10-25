@@ -81,7 +81,35 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 space-y-4">
+          {demoAvailable && (
+            <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-3.5 text-xs leading-relaxed text-muted" data-testid="demo-quick-login">
+              <p className="font-semibold text-ink">Quick start — one-click demo sign-in</p>
+              <div className="mt-2 flex flex-col gap-2">
+                <button type="button" onClick={() => demoLogin('citizen@demo.smartpetition.dev', 'Citizen#123')}
+                        disabled={!!demoBusy} className="btn-primary w-full !py-2 text-xs">
+                  {demoBusy === 'citizen@demo.smartpetition.dev' ? 'Signing in…' : 'Sign in as Demo Citizen'}
+                </button>
+                <button type="button" onClick={() => demoLogin('officer@demo.smartpetition.dev', 'Officer#123')}
+                        disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
+                  {demoBusy === 'officer@demo.smartpetition.dev' ? 'Signing in…' : 'Sign in as Demo Officer'}
+                </button>
+              </div>
+              <p className="mt-2">Admin: generated at first startup (backend console / FIRST_ADMIN.txt).</p>
+            </div>
+          )}
+          <div className="mt-6 flex items-center gap-3 text-xs text-muted">
+            <span className="h-px flex-1 bg-border" aria-hidden />
+            or sign in manually
+            <span className="h-px flex-1 bg-border" aria-hidden />
+          </div>
+          <div className="rounded-lg bg-ice p-3.5 text-xs leading-relaxed text-muted sr-only">
+            <p className="font-semibold text-ink">Development demo accounts</p>
+            <p className="mt-1">citizen@demo.smartpetition.dev / Citizen#123</p>
+            <p>officer@demo.smartpetition.dev / Officer#123</p>
+            <p>Admin credentials are generated at first startup (see backend console / FIRST_ADMIN.txt).</p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-4 space-y-4">
             <div>
               <label className="label" htmlFor="email">Email address</label>
               <input id="email" type="email" autoComplete="email" className="input"
@@ -104,30 +132,6 @@ export default function Login() {
             New citizen?{' '}
             <Link to="/register" className="font-semibold text-primary hover:underline">Create an account</Link>
           </p>
-          <div className="mt-6 rounded-lg bg-ice p-3.5 text-xs leading-relaxed text-muted">
-            <p className="font-semibold text-ink">Development demo accounts</p>
-            {demoAvailable ? (
-              <>
-                <div className="mt-2 flex flex-col gap-2">
-                  <button type="button" onClick={() => demoLogin('citizen@demo.smartpetition.dev', 'Citizen#123')}
-                          disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
-                    {demoBusy === 'citizen@demo.smartpetition.dev' ? 'Signing in…' : 'One-click sign in as Demo Citizen'}
-                  </button>
-                  <button type="button" onClick={() => demoLogin('officer@demo.smartpetition.dev', 'Officer#123')}
-                          disabled={!!demoBusy} className="btn-secondary w-full !py-2 text-xs">
-                    {demoBusy === 'officer@demo.smartpetition.dev' ? 'Signing in…' : 'One-click sign in as Demo Officer'}
-                  </button>
-                </div>
-                <p className="mt-2">Admin credentials are generated at first startup (see backend console / FIRST_ADMIN.txt).</p>
-              </>
-            ) : (
-              <>
-                <p className="mt-1">citizen@demo.smartpetition.dev / Citizen#123</p>
-                <p>officer@demo.smartpetition.dev / Officer#123</p>
-                <p>Admin credentials are generated at first startup (see backend console / FIRST_ADMIN.txt).</p>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </div>

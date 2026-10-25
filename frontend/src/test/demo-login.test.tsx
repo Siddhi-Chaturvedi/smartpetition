@@ -45,7 +45,7 @@ describe('one-click demo login', () => {
       </AuthProvider>,
     )
 
-    const btn = await screen.findByRole('button', { name: /one-click sign in as demo citizen/i })
+    const btn = await screen.findByRole('button', { name: /sign in as demo citizen/i })
     fireEvent.click(btn)
 
     await waitFor(() => {
@@ -79,6 +79,6 @@ describe('one-click demo login', () => {
     )
     await waitFor(() => expect(fetch).toHaveBeenCalled())
     await new Promise(r => setTimeout(r, 50))
-    expect(screen.queryByRole('button', { name: /one-click/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /sign in as demo (citizen|officer)/i })).toBeNull()
   })
 })
