@@ -1,0 +1,46 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+*.local
+.vite/
+
+# --- Databases & uploads (local state, never commit) ---
+backend/*.db
+backend/*.db-wal
+backend/*.db-shm
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+
+# --- Secrets & local config ---
+.env
+backend/.env
+backend/FIRST_ADMIN.txt
+*.pem
+*.key
+
+# --- IDE / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+backend/logs/
+frontend/logs/
+
+# --- Trained AI model artifacts (regenerable: python -m app.ai.train_model) ---
+backend/app/ai/model/

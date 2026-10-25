@@ -1,0 +1,23 @@
+# SmartPetition backend dependencies (pinned for reproducibility)
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+alembic==1.14.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+PyJWT==2.10.1
+python-multipart==0.0.20
+email-validator==2.2.0
+scikit-learn==1.6.0
+pandas==2.2.3
+numpy==2.2.1
+joblib==1.4.2
+httpx==0.28.1
+pytest==8.3.4
+
+# --- Optional -------------------------------------------------------------
+# PostgreSQL driver (production database). SQLite works out of the box.
+psycopg2-binary==2.9.10; python_version < "3.13"
+# Semantic duplicate detection (heavy: pulls in torch). The app falls back
+# to TF-IDF cosine similarity when this is not installed.
+# sentence-transformers==3.3.1
