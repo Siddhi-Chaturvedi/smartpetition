@@ -3,6 +3,7 @@ from functools import lru_cache
 import os
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # backend/
@@ -68,6 +69,19 @@ class Settings(BaseSettings):
 
     # --- Demo seed (never a public default admin password) ----------------------------------
     seed_demo_data: bool = True
+
+    @model_validator(mode="after")
+    def _safe_demo_default(self) -> "Settings":
+        # Production never seeds demo accounts/grievances unless the operator
+        # explicitly opts in via SEED_DEMO_DATA (documented demo deployments).
+        if self.environment == "production" and "SEED_DEMO_DATA" not in os.environ:
+            self.seed_demo_data = False
+        return self
+
+    # When set to a directory containing a built frontend (index.html),
+    # the API service also serves the SPA (single-service deployments such
+    # as Render/Docker without a separate web server).
+    frontend_dist: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

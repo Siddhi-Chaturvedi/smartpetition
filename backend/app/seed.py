@@ -177,7 +177,7 @@ def seed(db: Session) -> dict:
         ("admin@smartpetition.local", "Demo Administrator (local)", "AdminDemo@123", Role.admin, None),
     ]
     citizen = None
-    if settings.environment in ("development", "testing") and settings.seed_demo_data:
+    if settings.seed_demo_data:
         for email, name, pw, role, dept_name in demo_specs:
             dept_id = dept_by_name[dept_name].id if dept_name else None
             u = db.query(User).filter(User.email == email).first()

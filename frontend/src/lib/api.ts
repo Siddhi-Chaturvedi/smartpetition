@@ -2,7 +2,12 @@
  * API client — talks to the FastAPI backend through the Vite dev-server proxy
  * (relative URLs only; never hard-codes localhost so it works behind proxies).
  */
-const BASE = '/api/v1'
+// API base is configurable for split deployments (e.g. a static frontend
+// host pointing at a separate backend host). Defaults to same-origin
+// '/api/v1', which the Vite dev proxy and the single-service production
+// setup (backend serving frontend/dist) both satisfy.
+const EXPLICIT_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, '')
+const BASE = `${EXPLICIT_BASE ?? ''}/api/v1`
 const TOKEN_KEY = 'smartpetition_token'
 
 // Bump this marker whenever api.ts changes behaviour. The login page

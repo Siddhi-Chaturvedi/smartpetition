@@ -1,6 +1,7 @@
 """SmartPetition FastAPI application entrypoint."""
 import asyncio
 import logging
+from pathlib import Path
 import sys
 from contextlib import asynccontextmanager
 
@@ -116,6 +117,32 @@ app.include_router(admin.router, prefix=API)
 app.include_router(notifications.router, prefix=API)
 
 
-@app.get("/")
-def root():
-    return {"app": "SmartPetition", "docs": "/docs", "api": API, "health": f"{API}/health"}
+# --- optional single-service SPA serving (Render / Docker without nginx) -------
+# When FRONTEND_DIST points at a built frontend, this service also serves the
+# SPA: real files when they exist, index.html otherwise (client-side routing).
+# Registered AFTER the API routers so /api/v1, /docs etc. always win.
+_spa_dist = Path(settings.frontend_dist).resolve() if settings.frontend_dist else None
+if _spa_dist and (_spa_dist / "index.html").is_file():
+    from fastapi.responses import FileResponse
+
+    @app.get("/")
+    def root_spa():
+        return FileResponse(_spa_dist / "index.html")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa_fallback(full_path: str):
+        target = (_spa_dist / full_path).resolve()
+        if (
+            full_path
+            and not full_path.startswith("api/")
+            and target.is_file()
+            and str(target).startswith(str(_spa_dist))
+        ):
+            return FileResponse(target)
+        return FileResponse(_spa_dist / "index.html")
+
+    log.info("Serving frontend SPA from %s", _spa_dist)
+else:
+    @app.get("/")
+    def root():
+        return {"app": "SmartPetition", "docs": "/docs", "api": API, "health": f"{API}/health"}

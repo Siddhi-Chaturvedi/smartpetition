@@ -1,0 +1,50 @@
+# Render Blueprint — one-click deploy for SmartPetition.
+#
+# Usage:
+#   1. Push this repository to GitHub/GitLab.
+#   2. In Render: New → Blueprint → select the repo. Render reads this file
+#      and creates the Postgres instance plus the web service.
+#   3. After the first deploy, copy the generated FIRST_ADMIN_PASSWORD from
+#      the service's Environment page (or set your own before deploying).
+#
+# Architecture: ONE web service (FastAPI serves the API *and* the built SPA
+# from frontend/dist) + ONE managed Postgres. Same-origin means no CORS or
+# proxy configuration is required.
+databases:
+  - name: smartpetition-db
+    plan: free            # 90-day free tier; upgrade to keep data long-term
+    databaseName: smartpetition
+    user: smartpetition
+
+services:
+  - type: web
+    name: smartpetition
+    runtime: python
+    plan: free
+    pythonVersion: 3.11
+    region: frankfurt     # change to closest: oregon / virginia / singapore / mumbai
+    buildCommand: |
+      pip install -r backend/requirements.txt
+      npm ci --prefix frontend --no-audit --no-fund
+      npm run build --prefix frontend
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smartpetition-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true          # random per service; rotate by regenerating
+      - key: ENVIRONMENT
+        value: production
+      - key: FRONTEND_DIST
+        value: ../frontend/dist      # relative to backend/ (startCommand cwd)
+      - key: SEED_DEMO_DATA
+        value: "true"                # demo grievances + demo logins; set "false" for real use
+      - key: FIRST_ADMIN_EMAIL
+        value: admin@smartpetition.local
+      - key: FIRST_ADMIN_PASSWORD
+        generateValue: true          # read it from Render → Environment after deploy
+      - key: CORS_ORIGINS
+        value: ""                    # same-origin SPA: leave empty; add origins only if you split hosting
