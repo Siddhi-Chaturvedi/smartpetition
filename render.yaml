@@ -10,7 +10,7 @@ services:
     name: smartpetition
     runtime: python
     plan: free
-    region: frankfurt
+    region: oregon
     buildCommand: |
       pip install -r backend/requirements.txt
       npm ci --prefix frontend --no-audit --no-fund
