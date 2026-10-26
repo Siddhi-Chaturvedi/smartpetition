@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { LogIn, AlertCircle, BrainCircuit, Timer, ShieldCheck, Users, Activity, Database } from 'lucide-react'
 import Logo from '../components/Logo'
 import { useAuth, homePathFor } from '../context/AuthContext'
-import { ApiError, api } from '../lib/api'
+import { ApiError, api, API_BUILD } from '../lib/api'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -95,6 +95,26 @@ export default function Login() {
       setServerWaking(false)
     }
   }
+
+  // Dev-only stale-bundle guard: if Vite is serving a newer api.ts than the
+  // one executing in this tab (happens when the sandbox restarted and the
+  // tab never reloaded), refresh once so the user always runs current code.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    let cancelled = false
+    fetch('/src/lib/api.ts')
+      .then(r => (r.ok ? r.text() : ''))
+      .then(txt => {
+        const m = txt.match(/API_BUILD = '([^']+)'/)
+        if (!m || cancelled) return
+        if (m[1] !== API_BUILD && !(window as unknown as { __spReloaded?: boolean }).__spReloaded) {
+          ;(window as unknown as { __spReloaded?: boolean }).__spReloaded = true
+          window.location.reload()
+        }
+      })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [])
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),

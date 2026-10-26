@@ -5,6 +5,12 @@
 const BASE = '/api/v1'
 const TOKEN_KEY = 'smartpetition_token'
 
+// Bump this marker whenever api.ts changes behaviour. The login page
+// (dev only) compares it against the copy served by Vite and force-reloads
+// tabs that are still running an older bundle — the classic cause of
+// "login does nothing" after server restarts.
+export const API_BUILD = '2026-10-25-multicarrier-v3'
+
 // In-memory token mirror: the primary store. localStorage is only a
 // best-effort persistence layer because some embed contexts (sandboxed
 // iframes, locked-down browsers) block or partition it — without this,
