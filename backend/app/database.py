@@ -29,7 +29,10 @@ class UTCDateTime(types.TypeDecorator):
         return value
 
 connect_args = {"check_same_thread": False} if settings.is_sqlite else {}
-engine = create_engine(settings.database_url, connect_args=connect_args, future=True)
+_db_url = settings.database_url
+if not settings.is_sqlite and "sslmode" not in _db_url:
+    _db_url += ("&" if "?" in _db_url else "?") + "sslmode=require"
+engine = create_engine(_db_url, connect_args=connect_args, future=True)
 
 if settings.is_sqlite:
 
