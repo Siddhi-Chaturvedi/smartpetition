@@ -118,3 +118,22 @@ def test_alternative_token_carriers(client, citizen):
     # and a bogus token in any carrier is still rejected
     assert client.get("/api/v1/auth/me", headers={"X-Auth-Token": "junk"}).status_code == 401
     assert client.get("/api/v1/auth/me", params={"access_token": "junk"}).status_code == 401
+
+
+def test_register_accepts_local_dev_emails_and_reports_field_errors(client):
+    r = client.post("/api/v1/auth/register", json={
+        "email": "new.person@smartpetition.local", "full_name": "New Person",
+        "password": "Passw0rd123"})
+    assert r.status_code == 201, r.text
+    # duplicate -> clear 409, not a validation error
+    r2 = client.post("/api/v1/auth/register", json={
+        "email": "new.person@smartpetition.local", "full_name": "New Person",
+        "password": "Passw0rd123"})
+    assert r2.status_code == 409
+    # weak password -> 422 WITH field-level errors list
+    r3 = client.post("/api/v1/auth/register", json={
+        "email": "weak@smartpetition.local", "full_name": "Weak Pass",
+        "password": "short"})
+    assert r3.status_code == 422
+    body = r3.json()
+    assert body["errors"] and any("password" in e["field"] for e in body["errors"])

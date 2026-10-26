@@ -12,8 +12,21 @@ class ORMModel(BaseModel):
 
 
 # --------------------------------------------------------------------- auth / users
+def _lenient_email_shape(v: str) -> str:
+    v = v.strip().lower()
+    if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
+        raise ValueError("Enter a valid email address")
+    return v
+
+
+LenientEmail = Annotated[str, AfterValidator(_lenient_email_shape)]
+
+
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    # LenientEmail (shape-checked, allows special-use TLDs like .local) so the
+    # documented local-development addresses can be used everywhere; password
+    # policy below still enforces strength.
+    email: LenientEmail
     full_name: str = Field(min_length=2, max_length=160)
     password: str = Field(min_length=8, max_length=128)
     phone: str = Field(default="", max_length=32)
@@ -24,16 +37,6 @@ class RegisterRequest(BaseModel):
         if not any(c.isdigit() for c in v) or not any(c.isalpha() for c in v):
             raise ValueError("Password must contain both letters and numbers")
         return v
-
-
-def _lenient_email_shape(v: str) -> str:
-    v = v.strip().lower()
-    if not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", v):
-        raise ValueError("Enter a valid email address")
-    return v
-
-
-LenientEmail = Annotated[str, AfterValidator(_lenient_email_shape)]
 
 
 class LoginRequest(BaseModel):

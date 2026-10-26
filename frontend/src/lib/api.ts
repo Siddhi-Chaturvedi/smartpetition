@@ -93,8 +93,9 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
   if (!res.ok) {
     const d = data as { detail?: string | Record<string, unknown>; errors?: { field: string; message: string }[] } | null
     let message = `Request failed (${res.status})`
-    if (d && typeof d.detail === 'string') message = d.detail
-    else if (res.status === 422 && d?.errors?.length) message = d.errors.map(e => `${e.field}: ${e.message}`).join('; ')
+    // Prefer field-level messages (actionable) over the generic detail string.
+    if (res.status === 422 && d?.errors?.length) message = d.errors.map(e => `${e.field}: ${e.message}`).join('; ')
+    else if (d && typeof d.detail === 'string') message = d.detail
     if (res.status === 401) {
       setToken(null)
       // Wrong password on the login/register form is a normal 401 — stay put.
