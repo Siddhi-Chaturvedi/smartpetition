@@ -27,14 +27,12 @@ def _bootstrap() -> None:
     init_db()
     if settings.seed_demo_data:
         from app.seed import seed
-
         db = SessionLocal()
         try:
             seed(db)
         finally:
             db.close()
     from app.services.ai_classifier import classifier
-
     classifier.load()
     log.info("AI model: %s (%s)", classifier.version,
              "trained model" if classifier.available else "rule-based FALLBACK")
@@ -54,7 +52,6 @@ async def _lazy_sla_sweep(request, call_next):
         _last_sweep = now
         try:
             from app.services.sla import run_sla_sweep
-
             db = SessionLocal()
             try:
                 run_sla_sweep(db)
